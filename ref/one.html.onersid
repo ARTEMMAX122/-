@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>С Новым Годом! 🎄</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(to bottom, #0a192f, #1e3a5f);
+            color: #fff;
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            position: relative;
+        }
+
+        .container {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+            padding-top: 150px;
+        }
+
+        h1 {
+            font-size: 3em;
+            color: #ffd700;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.7);
+            margin-bottom: 20px;
+        }
+
+        .message {
+            font-size: 1.5em;
+            margin-bottom: 30px;
+        }
+
+        .snowman {
+            font-size: 4em;
+            margin: 20px;
+        }
+
+        /* Снегопад */
+        .snowflake {
+            position: absolute;
+            top: -20px;
+            color: #fff;
+            font-size: 1.2em;
+            user-select: none;
+            pointer-events: none;
+            animation: fall linear forwards;
+        }
+
+        @keyframes fall {
+            to {
+                transform: translateY(105vh);
+            }
+        }
+
+        .redirect-note {
+            margin-top: 30px;
+            font-size: 1.2em;
+            color: #aaa;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>С Новым Годом! 🎄✨</h1>
+        <div class="message">Спасибо за участие! Сейчас вы будете перенаправлены...</div>
+        <div class="snowman">⛄❄️⛄</div>
+        <div class="redirect-note">Переход через <span id="countdown">4</span> секунд...</div>
+    </div>
+
+    <script>
+        // --- Анимация снега ---
+        function createSnowflake() {
+            const snowflake = document.createElement('div');
+            snowflake.classList.add('snowflake');
+            snowflake.innerHTML = '❄';
+            snowflake.style.left = Math.random() * 100 + 'vw';
+            snowflake.style.animationDuration = (Math.random() * 5 + 5) + 's';
+            snowflake.style.opacity = Math.random();
+            document.body.appendChild(snowflake);
+
+            // Удаляем снежинку после анимации
+            setTimeout(() => {
+                snowflake.remove();
+            }, 10000);
+        }
+
+        // Создаём снежинки каждые 200мс
+        setInterval(createSnowflake, 200);
+
+        // --- Таймер обратного отсчёта ---
+        let countdown = 4;
+        const countdownElement = document.getElementById('countdown');
+
+        const timer = setInterval(() => {
+            countdown--;
+            countdownElement.textContent = countdown;
+
+            if (countdown <= 0) {
+                clearInterval(timer);
+                window.location.href = 'https://lichess.org/team/v1TwDg2i';
+                // Пытаемся закрыть вкладку (работает, если открыта через window.open)
+                setTimeout(() => {
+                    window.close();
+                }, 100);
+            }
+        }, 1000);
+    </script>
+</body>
+</html>
