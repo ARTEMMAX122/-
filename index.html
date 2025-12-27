@@ -42,7 +42,6 @@
     <div id="joystickContainer"></div>
     <button id="eatButton">🍽 Пообедать!</button>
 
-    <!-- Подключаем библиотеки -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/nipplejs@0.9.0/dist/nipplejs.min.js"></script>
 
@@ -87,7 +86,6 @@
 
         // --- Картинка на стене ---
         const textureLoader = new THREE.TextureLoader();
-        // Загрузим картинку (замените на свою)
         const texture = textureLoader.load('https://images.unsplash.com/photo-1540206395-68808572332f?w=500');
         const imageMaterial = new THREE.MeshBasicMaterial({ map: texture });
         const imagePlane = new THREE.Mesh(
@@ -99,13 +97,18 @@
 
         // --- Персонаж (кубик) ---
         const playerGeometry = new THREE.BoxGeometry(0.5, 1.6, 0.5);
-        const playerMaterial = new THREE.MeshBasicMaterial({ color: 0x00aaff });
+        const playerMaterial = new THREE.MeshStandardMaterial({ color: 0x00aaff });
         const player = new THREE.Mesh(playerGeometry, playerMaterial);
         player.position.y = 0.8;
         scene.add(player);
 
         // --- Джойстик ---
-        let activeJoystick = null;
+        let velocity = new THREE.Vector3();
+        let moveForward = false;
+        let moveBackward = false;
+        let moveLeft = false;
+        let moveRight = false;
+
         const manager = nipplejs.create({
             zone: document.getElementById('joystickContainer'),
             mode: 'static',
@@ -118,13 +121,32 @@
             const angle = data.angle.radian;
             const force = data.force;
 
-            // Движение вперед/назад
-            player.translateZ(-force * 0.1 * Math.sin(angle));
-            player.translateX(force * 0.1 * Math.cos(angle));
+            // Направление движения
+            velocity.x = force * Math.sin(angle);
+            velocity.z = -force * Math.cos(angle);
 
-            // Поворот в зависимости от направления
-            player.rotation.y = -angle;
+            // Ограничиваем скорость
+            velocity.normalize().multiplyScalar(force * 0.1);
         });
+
+        // --- Анимация ---
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Применяем движение
+            player.translateX(velocity.x);
+            player.translateZ(velocity.z);
+
+            // Ограничиваем передвижение в пределах пола
+            player.position.x = Math.max(-9.75, Math.min(9.75, player.position.x));
+            player.position.z = Math.max(-9.75, Math.min(9.75, player.position.z));
+
+            checkProximity();
+            renderer.render(scene, camera);
+
+            // Сбрасываем вектор
+            velocity.set(0, 0, 0);
+        }
 
         // --- Проверка столкновения с столом ---
         const eatButton = document.getElementById('eatButton');
@@ -141,15 +163,10 @@
         // --- Событие "пообедать" ---
         eatButton.addEventListener('click', () => {
             alert('Ты вкусно пообедал! 🍽');
-            eatButton.style.display = 'none';
+            setTimeout(() => {
+                window.location.href = '/glav'; // Переход на /glav
+            }, 100);
         });
-
-        // --- Анимация ---
-        function animate() {
-            requestAnimationFrame(animate);
-            checkProximity();
-            renderer.render(scene, camera);
-        }
 
         // --- Обработка изменения размера окна ---
         window.addEventListener('resize', () => {
