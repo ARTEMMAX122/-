@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Новогодний Магазин 🎁</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #1a2930, #2c556e, #1f4562);
+      color: white;
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* Снег */
+    body::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image: 
+        radial-gradient(2px 2px at 20px 30px, #fff, rgba(255,255,255,0)),
+        radial-gradient(2px 2px at 40px 70px, #fff, rgba(255,255,255,0)),
+        radial-gradient(2px 2px at 50px 50px, #fff, rgba(255,255,255,0)),
+        radial-gradient(2px 2px at 90px 20px, #fff, rgba(255,255,255,0)),
+        radial-gradient(2px 2px at 120px 60px, #fff, rgba(255,255,255,0));
+      background-size: 100px 100px;
+      animation: snow 15s linear infinite;
+      pointer-events: none;
+      opacity: 0.7;
+    }
+
+    @keyframes snow {
+      0% { background-position: 0 0; }
+      100% { background-position: 100px 1000px; }
+    }
+
+    .header {
+      text-align: center;
+      padding: 24px 16px;
+      font-size: 2.4rem;
+      font-weight: 800;
+      letter-spacing: 2px;
+      text-shadow: 0 3px 8px rgba(0,0,0,0.6);
+    }
+
+    .buttons {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 20px;
+      padding: 20px;
+      margin-bottom: 40px;
+    }
+
+    .btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 280px;
+      height: 120px;
+      background: linear-gradient(135deg, #ff6b6b, #ff8e53);
+      border-radius: 16px;
+      text-decoration: none;
+      color: white;
+      font-size: 1.4rem;
+      font-weight: 700;
+      text-align: center;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+      border: 2px solid rgba(255,255,255,0.2);
+    }
+
+    .btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 12px 28px rgba(0,0,0,0.5);
+    }
+
+    .btn::after {
+      content: '';
+      position: absolute;
+      top: -50%; left: -50%;
+      width: 200%; height: 200%;
+      background: radial-gradient(circle, rgba(255,255,255,0.3), transparent 70%);
+      opacity: 0;
+      transition: opacity 0.4s;
+    }
+
+    .btn:hover::after {
+      opacity: 1;
+    }
+
+    .btn-2 { background: linear-gradient(135deg, #4facfe, #00f2fe); }
+    .btn-3 { background: linear-gradient(135deg, #a8edea, #fed6e3); color: #222; }
+
+    /* Tic-Tac-Toe */
+    .game {
+      max-width: 400px;
+      margin: 0 auto;
+      background: rgba(0,0,0,0.25);
+      padding: 24px;
+      border-radius: 20px;
+      box-shadow: inset 0 0 12px rgba(0,0,0,0.5);
+    }
+
+    .game-title {
+      text-align: center;
+      font-size: 1.6rem;
+      margin-bottom: 20px;
+      color: #ffd166;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .cell {
+      width: 100%;
+      aspect-ratio: 1;
+      background: rgba(255,255,255,0.1);
+      border-radius: 8px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 2.8rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .cell:hover {
+      background: rgba(255,255,255,0.25);
+    }
+
+    .cell.x { color: #ff6b6b; }
+    .cell.o { color: #4ecdc4; }
+
+    .status {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 1.2rem;
+      min-height: 28px;
+      font-weight: 600;
+    }
+
+    .win {
+      animation: pulse 0.8s infinite alternate;
+    }
+
+    @keyframes pulse {
+      from { transform: scale(1); }
+      to { transform: scale(1.08); }
+    }
+
+    @media (max-width: 500px) {
+      .btn { width: 90%; height: 100px; font-size: 1.2rem; }
+      .header { font-size: 1.8rem; }
+    }
+  </style>
+</head>
+<body>
+  <h1 class="header">🎁 Новогодний Магазин</h1>
+
+  <div class="buttons">
+    <a href="https://artemmax122.github.io/-/img/viem" class="btn">
+      🎨 Склад картинок
+    </a>
+    <a href="https://artemmax122.github.io/-/glav/glavatwo" class="btn btn-2">
+      ➡️ Пройти дальше
+    </a>
+  </div>
+
+  <div class="game">
+    <div class="game-title">🍲 Крестики-Нолики: Голодный человек vs Обед</div>
+    <div class="board" id="board">
+      <div class="cell" data-index="0"></div>
+      <div class="cell" data-index="1"></div>
+      <div class="cell" data-index="2"></div>
+      <div class="cell" data-index="3"></div>
+      <div class="cell" data-index="4"></div>
+      <div class="cell" data-index="5"></div>
+      <div class="cell" data-index="6"></div>
+      <div class="cell" data-index="7"></div>
+      <div class="cell" data-index="8"></div>
+    </div>
+    <div class="status" id="status">Вы — 😋 | Обед — 🍲</div>
+  </div>
+
+  <script>
+    const board = document.getElementById('board');
+    const cells = document.querySelectorAll('.cell');
+    const statusEl = document.getElementById('status');
+    let gameActive = true;
+    let currentPlayer = 'X'; // X = 😋 (human), O = 🍲 (AI)
+
+    const winPatterns = [
+      [0,1,2], [3,4,5], [6,7,8], // rows
+      [0,3,6], [1,4,7], [2,5,8], // cols
+      [0,4,8], [2,4,6]           // diags
+    ];
+
+    function checkWin() {
+      for (let pattern of winPatterns) {
+        const [a, b, c] = pattern;
+        if (cells[a].textContent && 
+            cells[a].textContent === cells[b].textContent && 
+            cells[a].textContent === cells[c].textContent) {
+          return cells[a].textContent;
+        }
+      }
+      return null;
+    }
+
+    function checkDraw() {
+      return [...cells].every(cell => cell.textContent !== '');
+    }
+
+    function makeAIMove() {
+      if (!gameActive) return;
+
+      // Get all empty cells
+      const emptyCells = [...cells].filter(cell => cell.textContent === '');
+      if (emptyCells.length === 0) return;
+
+      // Random move
+      const randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+      randomCell.textContent = 'O';
+      randomCell.classList.add('o');
+
+      const winner = checkWin();
+      if (winner === 'O') {
+        statusEl.textContent = "🍲 Обед победил! Попробуй ещё...";
+        gameActive = false;
+      } else if (checkDraw()) {
+        statusEl.textContent = "🤝 Ничья! Оба сытые?";
+        gameActive = false;
+      } else {
+        currentPlayer = 'X';
+        statusEl.textContent = "Ваш ход, 😋";
+      }
+    }
+
+    function handleClick(e) {
+      const cell = e.target;
+      if (!cell.classList.contains('cell') || cell.textContent || !gameActive) return;
+
+      cell.textContent = 'X';
+      cell.classList.add('x');
+
+      const winner = checkWin();
+      if (winner === 'X') {
+        // Highlight winning line
+        for (let pattern of winPatterns) {
+          if (pattern.every(i => cells[i].textContent === 'X')) {
+            pattern.forEach(i => cells[i].classList.add('win'));
+          }
+        }
+        statusEl.textContent = "🎉 Вы победили! Обед ваш!";
+        gameActive = false;
+
+        // Redirect after 1.5 sec
+        setTimeout(() => {
+          window.location.href = "https://artemmax122.github.io/-/tainaiastranisa";
+        }, 1500);
+        return;
+      }
+
+      if (checkDraw()) {
+        statusEl.textContent = "🤝 Ничья! Оба сытые?";
+        gameActive = false;
+        return;
+      }
+
+      currentPlayer = 'O';
+      statusEl.textContent = "🍲 Обед думает...";
+      setTimeout(makeAIMove, 600);
+    }
+
+    board.addEventListener('click', handleClick);
+
+    // Initial status
+    statusEl.textContent = "Вы — 😋 | Обед — 🍲";
+  </script>
+</body>
+</html>
