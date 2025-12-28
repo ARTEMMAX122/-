@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>⚠️ ТАЙНАЯ СТРАНИЦА</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #000;
+      color: #ff0000;
+      font-family: 'Courier New', monospace;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      position: relative;
+    }
+
+    /* Грозная анимация фона — имитация молний */
+    body::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: radial-gradient(circle at 50% 50%, rgba(255,0,0,0.05), transparent 70%);
+      animation: pulseBackground 4s infinite;
+      pointer-events: none;
+    }
+
+    @keyframes pulseBackground {
+      0%, 100% { opacity: 0.1; }
+      50% { opacity: 0.4; }
+    }
+
+    .warning {
+      font-size: clamp(2.5rem, 8vw, 6rem);
+      font-weight: 900;
+      letter-spacing: 4px;
+      text-shadow: 
+        0 0 10px #ff0000,
+        0 0 20px #ff0000,
+        0 0 30px #ff0000;
+      margin-bottom: 40px;
+      animation: flash 1.8s infinite;
+      line-height: 1.2;
+    }
+
+    @keyframes flash {
+      0%, 100% { opacity: 1; text-shadow: 0 0 10px #ff0000; }
+      50% { opacity: 0.4; text-shadow: 0 0 40px #ff0000, 0 0 60px #ff0000; }
+    }
+
+    .hint {
+      font-size: 1.1rem;
+      color: #aaa;
+      max-width: 80%;
+      margin-bottom: 50px;
+      line-height: 1.6;
+    }
+
+    .btn {
+      background: linear-gradient(to bottom, #ff3333, #cc0000);
+      color: white;
+      border: none;
+      padding: 16px 48px;
+      font-size: 1.4rem;
+      font-weight: 700;
+      border-radius: 50px;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      box-shadow: 0 6px 20px rgba(255,0,0,0.5);
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 8px 25px rgba(255,0,0,0.7);
+    }
+
+    .btn:active {
+      transform: scale(0.98);
+    }
+
+    .btn::after {
+      content: '';
+      position: absolute;
+      top: -50%; left: -60%;
+      width: 20px;
+      height: 200%;
+      background: rgba(255,255,255,0.3);
+      transform: rotate(25deg);
+      transition: all 0.8s;
+    }
+
+    .btn:hover::after {
+      left: 120%;
+    }
+
+    .error {
+      margin-top: 20px;
+      font-size: 1rem;
+      color: #ffcc00;
+      min-height: 24px;
+      opacity: 0;
+      transition: opacity 0.4s;
+    }
+
+    .error.show {
+      opacity: 1;
+    }
+
+    /* Новогодний намёк внизу */
+    .footer {
+      position: absolute;
+      bottom: 20px;
+      width: 100%;
+      color: #444;
+      font-size: 0.9rem;
+    }
+
+    .footer::after {
+      content: "🎅 Не Дед Мороз. А тот, кто знает...";
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="warning">ВКЛЮЧИ ЗВУК!!!</div>
+  
+  <p class="hint">
+    Браузер требует разрешения на воспроизведение звука.<br>
+    Нажми на любую ссылку/видео/игру — или просто включи динамики.<br>
+    Без звука ты не пройдёшь дальше. Никто не проходил.
+  </p>
+
+  <button class="btn" id="soundBtn">Я включил!</button>
+  <div class="error" id="error"></div>
+
+  <div class="footer"></div>
+
+  <script>
+    const btn = document.getElementById('soundBtn');
+    const errorEl = document.getElementById('error');
+
+    // Функция для отображения ошибки
+    function showError(msg) {
+      errorEl.textContent = msg;
+      errorEl.classList.add('show');
+      setTimeout(() => errorEl.classList.remove('show'), 4000);
+    }
+
+    // Создаём тихий тестовый звук (200 Гц, 0.1 сек, очень тихо — 0.01 громкости)
+    function createTestSound() {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      oscillator.type = 'sine';
+      oscillator.frequency.value = 200;
+      gain.gain.value = 0.01; // почти неслышно, но detectable
+
+      oscillator.connect(gain);
+      gain.connect(ctx.destination);
+
+      oscillator.start();
+      oscillator.stop(ctx.currentTime + 0.1);
+
+      return ctx;
+    }
+
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      btn.textContent = "Проверяю...";
+
+      try {
+        // Попытка получить доступ к AudioContext
+        let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        // Разрешён ли контекст? (браузеры требуют user gesture)
+        if (audioCtx.state === 'suspended') {
+          await audioCtx.resume();
+        }
+
+        if (audioCtx.state !== 'running') {
+          throw new Error('AudioContext не запустился');
+        }
+
+        // Проигрываем тестовый звук
+        createTestSound();
+
+        // ✅ Успех!
+        btn.textContent = "✅ УСПЕХ! Переход...";
+        setTimeout(() => {
+          window.location.href = "https://artemmax122.github.io/-/zvuk";
+        }, 800);
+
+      } catch (err) {
+        console.warn("Sound check failed:", err);
+        
+        // Пытаемся ещё раз — но уже через user gesture (клик уже был!)
+        // Некоторые браузеры требуют play() *внутри* обработчика клика
+        try {
+          // Создаём молчащий <audio> и пытаемся проиграть
+          const audio = new Audio();
+          audio.volume = 0.01;
+          // Пустой звук (data URI ~0.1s тишины)
+          audio.src = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
+          await audio.play();
+          audio.pause();
+
+          // Если дошли сюда — звук разрешён
+          btn.textContent = "✅ УСПЕХ! Переход...";
+          setTimeout(() => {
+            window.location.href = "https://artemmax122.github.io/-/zvuk";
+          }, 800);
+        } catch (e2) {
+          // Обе попытки провалились
+          showError("звук всё ещё выключен или заблокирован браузером");
+          btn.disabled = false;
+          btn.textContent = "Я включил!";
+        }
+      }
+    });
+  </script>
+</body>
+</html>
