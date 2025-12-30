@@ -10,7 +10,6 @@
       --snow: #f8fbff;
       --gold: #ffd700;
       --green: #2e8b57;
-      --red: #d32f2f;
       --border: #4a6b85;
     }
 
@@ -45,7 +44,7 @@
       font-size: 1.2rem;
       user-select: none;
       opacity: 0.7;
-      animation: fall linear forwards;
+      animation: fall linear infinite; /* ← бесконечно! */
     }
     @keyframes fall {
       to {
@@ -87,8 +86,6 @@
       transition: 0.2s;
     }
     .btn:hover { background: #226b47; }
-    .btn-red { background: var(--red); }
-    .btn-red:hover { background: #a02525; }
 
     .status {
       padding: 12px;
@@ -118,48 +115,12 @@
       position: sticky;
       top: 0;
     }
-    tr.highlight {
-      background: rgba(255, 215, 0, 0.25) !important;
-      animation: pulse 1.5s ease-in-out;
-    }
-    @keyframes pulse {
-      0% { background-color: rgba(255,215,0,0.1); }
-      50% { background-color: rgba(255,215,0,0.5); }
-      100% { background-color: rgba(255,215,0,0.1); }
-    }
-
-    .search-panel {
-      margin: 20px 0;
-      padding: 16px;
-      background: rgba(0,0,0,0.3);
-      border-radius: 8px;
-      display: none;
-    }
-    .search-row {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-    select, input {
-      padding: 8px 12px;
-      border-radius: 4px;
-      border: 1px solid var(--border);
-      background: rgba(255,255,255,0.1);
-      color: var(--snow);
-    }
-    input::placeholder { color: #aaa; }
 
     footer {
       margin-top: 30px;
       text-align: center;
       font-size: 0.9rem;
       color: #aaa;
-    }
-
-    @media (max-width: 600px) {
-      header { flex-direction: column; gap: 10px; }
-      .search-row { flex-direction: column; align-items: stretch; }
     }
   </style>
 </head>
@@ -171,25 +132,10 @@
       <h1>🎄 Новогодняя Валюта</h1>
       <div class="top-bar">
         <a href="https://lichess.org/team/v1TwDg2i" class="btn" target="_blank">Клуб</a>
-        <button id="btnFind" class="btn btn-red">Найти себя</button>
       </div>
     </header>
 
     <div id="status" class="status">⏳ Загрузка данных…</div>
-
-    <div id="searchPanel" class="search-panel">
-      <h3>🔍 Найти запись</h3>
-      <div class="search-row">
-        <label>Столбец:</label>
-        <select id="colSelect">
-          <option value="">— загрузка заголовков…</option>
-        </select>
-        <label>Текст:</label>
-        <input type="text" id="searchInput" placeholder="Введите имя, число и т.д." />
-        <button id="doSearch" class="btn">Искать</button>
-        <button id="clearSearch" class="btn">Сброс</button>
-      </div>
-    </div>
 
     <div style="overflow-x: auto;">
       <table id="dataTable">
@@ -204,48 +150,31 @@
   </div>
 
   <script>
-    // ====== ГЛОБАЛЫ ======
+    // === Глобалы ===
     const statusEl = document.getElementById('status');
     const table = document.getElementById('dataTable');
     const thead = table.querySelector('thead');
     const tbody = table.querySelector('tbody');
-    const btnFind = document.getElementById('btnFind');
-    const searchPanel = document.getElementById('searchPanel');
-    const colSelect = document.getElementById('colSelect');
-    const searchInput = document.getElementById('searchInput');
-    const doSearchBtn = document.getElementById('doSearch');
-    const clearSearchBtn = document.getElementById('clearSearch');
 
     let headers = [];
-    let dataRows = []; // каждый элемент: { raw: [...], computed: [...] }
-    let priorityColumn = null;
-    let isDataLoaded = false;
+    let dataRows = [];
+    let priorityColumn = 0;
 
-    // ====== УТИЛИТЫ ======
-    function showStatus(msg, isError = false) {
-      statusEl.textContent = msg;
-      statusEl.className = 'status ' + (isError ? 'error' : 'success');
-    }
-
+    // === Утилиты ===
     async function fetchText(file) {
       const res = await fetch(file + '?_=' + Date.now());
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return await res.text();
     }
 
-    // Вычисляет "12+13" → 25, иначе NaN → оставляем как есть
     function computeExpr(str) {
       if (typeof str !== 'string') return str;
       str = str.trim();
-      // Поддерживаем: 5, 10+2, 3+4+1
       if (/^\d+(\+\d+)*$/.test(str)) {
-        try {
-          // БЕЗ eval — безопасно:
-          const parts = str.split('+').map(s => parseInt(s, 10));
-          if (parts.every(n => !isNaN(n))) {
-            return parts.reduce((a, b) => a + b, 0);
-          }
-        } catch (e) {}
+        const parts = str.split('+').map(s => parseInt(s, 10));
+        if (parts.every(n => !isNaN(n))) {
+          return parts.reduce((a, b) => a + b, 0);
+        }
       }
       return NaN;
     }
@@ -278,145 +207,48 @@
       return [...rows].sort((a, b) => {
         const A = a.computed[colIndex];
         const B = b.computed[colIndex];
-        if (isNumeric) {
-          return Number(B) - Number(A); // ↓ убывание
-        }
+        if (isNumeric) return Number(B) - Number(A);
         const strA = (typeof A === 'string' ? A : String(A)).toLowerCase();
         const strB = (typeof B === 'string' ? B : String(B)).toLowerCase();
         return strB.localeCompare(strA, 'ru', { numeric: true });
       });
     }
 
-    function updateColumnSelect() {
-      requestAnimationFrame(() => {
-        colSelect.innerHTML = '';
-        if (headers.length === 0) {
-          colSelect.innerHTML = '<option value="" disabled selected>— загрузка…</option>';
-        } else {
-          colSelect.innerHTML = '<option value="">— выберите столбец —</option>';
-          headers.forEach((h, i) => {
-            const opt = document.createElement('option');
-            opt.value = i;
-            opt.textContent = h;
-            colSelect.appendChild(opt);
-          });
-        }
-      });
-    }
-
-    // ====== ОСНОВНАЯ ЗАГРУЗКА ======
-    async function loadData() {
-      try {
-        showStatus('📥 Загрузка данных…', false);
-        const [dataTxt, priorityTxt] = await Promise.all([
-          fetchText('data.txt'),
-          fetchText('priority.txt')
-        ]);
-
-        const parsedData = parseData(dataTxt);
-        const priorityLines = priorityTxt.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'));
-
-        if (priorityLines.length < 1) throw new Error('priority.txt пуст');
-
-        headers = priorityLines[0].split('|').map(s => s.trim()).filter(Boolean);
-
-        // Определяем приоритетный столбец
-        priorityColumn = null;
-        for (let line of priorityLines.slice(1)) {
-          const match = line.match(/priority\s+for\s+["'](.+?)["']/i);
-          if (match) {
-            const name = match[1].trim();
-            priorityColumn = headers.indexOf(name);
-            if (priorityColumn === -1) {
-              throw new Error(`Столбец "${name}" не найден среди: ${headers.join(', ')}`);
-            }
-            break;
-          }
-        }
-
-        if (priorityColumn === null) {
-          priorityColumn = headers.length - 1;
-          console.warn('⚠️ priority for не указан — сортировка по последнему столбцу');
-        }
-
-        const isNumeric = detectNumericColumn(priorityColumn, parsedData);
-        const sortedData = sortRows(parsedData, priorityColumn, isNumeric);
-
-        dataRows = sortedData;
-        isDataLoaded = true;
-
-        // Рендер
-        renderTable();
-        updateColumnSelect();
-        showStatus(`✅ Загружено ${dataRows.length} строк. Сортировка: "${headers[priorityColumn]}" (${isNumeric ? 'числовая' : 'текстовая'})`, false);
-
-      } catch (err) {
-        console.error(err);
-        showStatus(`❌ Ошибка: ${err.message}`, true);
-        updateColumnSelect();
-      }
-    }
-
+    // === Рендер ===
     function renderTable() {
-      // Заголовки
       thead.innerHTML = '';
       const headerRow = document.createElement('tr');
       headers.forEach((h, i) => {
         const th = document.createElement('th');
         th.textContent = h;
-        if (i === priorityColumn) {
-          th.style.background = '#ff6f00';
-          th.title = 'Приоритетный столбец';
-        }
+        if (i === priorityColumn) th.style.background = '#ff6f00';
         headerRow.appendChild(th);
       });
       thead.appendChild(headerRow);
 
-      // Строки
       tbody.innerHTML = '';
       dataRows.forEach(row => {
         const tr = document.createElement('tr');
-        row.raw.forEach((cell, i) => {
+        row.raw.forEach(cell => {
           const td = document.createElement('td');
           td.textContent = cell;
-          // Для числовых — можно добавить title
-          if (typeof row.computed[i] === 'number' && row.computed[i] !== cell) {
-            td.title = `Вычислено: ${row.computed[i]}`;
-          }
           tr.appendChild(td);
         });
         tbody.appendChild(tr);
       });
     }
 
-    function highlightSearch(colIndex, query) {
-      const rows = tbody.querySelectorAll('tr');
-      rows.forEach(tr => tr.classList.remove('highlight'));
-
-      if (colIndex === '' || !query.trim()) return;
-
-      const q = query.trim().toLowerCase();
-      let found = 0;
-      rows.forEach((tr, idx) => {
-        const cell = tr.cells[colIndex];
-        const rawVal = dataRows[idx]?.raw[colIndex] || '';
-        const compVal = dataRows[idx]?.computed[colIndex];
-        const strToSearch = (rawVal + ' ' + (typeof compVal === 'number' ? compVal : '')).toLowerCase();
-        if (cell && strToSearch.includes(q)) {
-          tr.classList.add('highlight');
-          found++;
-        }
-      });
-
-      showStatus(`🔍 Найдено: ${found} совпадений`, false);
+    function showStatus(msg, isError = false) {
+      statusEl.textContent = msg;
+      statusEl.className = 'status ' + (isError ? 'error' : 'success');
     }
 
-    // ====== СОЗДАНИЕ СНЕЖИНОК ======
+    // === Снежинки (бесконечные) ===
     function createSnowflakes() {
       const container = document.getElementById('snow-container');
       container.innerHTML = '';
       const flakes = '❅❆❄✻✼❇';
-      const count = Math.min(60, Math.floor(window.innerWidth / 15));
+      const count = Math.min(70, Math.floor(window.innerWidth / 12));
 
       for (let i = 0; i < count; i++) {
         const snow = document.createElement('div');
@@ -424,58 +256,56 @@
         snow.textContent = flakes[Math.floor(Math.random() * flakes.length)];
         snow.style.left = Math.random() * 100 + 'vw';
         snow.style.opacity = 0.3 + Math.random() * 0.6;
-        snow.style.fontSize = (0.7 + Math.random() * 1) + 'rem';
-        snow.style.animationDuration = (6 + Math.random() * 12) + 's';
+        snow.style.fontSize = (0.6 + Math.random() * 1) + 'rem';
+        snow.style.animationDuration = (6 + Math.random() * 10) + 's';
         snow.style.animationDelay = Math.random() * 5 + 's';
-        snow.style.animationName = 'fall';
         container.appendChild(snow);
       }
     }
 
-    // ====== ИНИЦИАЛИЗАЦИЯ ======
+    // === Загрузка данных ===
+    async function loadData() {
+      try {
+        showStatus('📥 Загрузка…', false);
+        const [dataTxt, priorityTxt] = await Promise.all([
+          fetchText('data.txt'),
+          fetchText('priority.txt')
+        ]);
+
+        const rawRows = parseData(dataTxt);
+        const priorityLines = priorityTxt.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'));
+
+        if (priorityLines.length < 1) throw new Error('Файл priority.txt пуст');
+
+        headers = priorityLines[0].split('|').map(s => s.trim()).filter(Boolean);
+
+        // priority for
+        priorityColumn = headers.length - 1;
+        for (let line of priorityLines.slice(1)) {
+          const m = line.match(/priority\s+for\s+["'](.+?)["']/i);
+          if (m) {
+            const idx = headers.indexOf(m[1].trim());
+            if (idx !== -1) priorityColumn = idx;
+            break;
+          }
+        }
+
+        const isNumeric = detectNumericColumn(priorityColumn, rawRows);
+        dataRows = sortRows(rawRows, priorityColumn, isNumeric);
+
+        renderTable();
+        showStatus(`✅ Загружено ${dataRows.length} строк. Сортировка: "${headers[priorityColumn]}"`, false);
+
+      } catch (err) {
+        console.error(err);
+        showStatus(`❌ ${err.message}`, true);
+      }
+    }
+
+    // === Старт ===
     document.addEventListener('DOMContentLoaded', () => {
       createSnowflakes();
       window.addEventListener('resize', createSnowflakes);
-
-      // Кнопка "Найти себя"
-      btnFind.addEventListener('click', async () => {
-        searchPanel.style.display = searchPanel.style.display === 'none' ? 'block' : 'none';
-        if (headers.length === 0 && !isDataLoaded) {
-          colSelect.innerHTML = '<option value="" disabled selected>— загрузка структуры…</option>';
-          try {
-            const pt = await fetchText('priority.txt');
-            const lines = pt.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'));
-            if (lines.length >= 1) {
-              headers = lines[0].split('|').map(s => s.trim()).filter(Boolean);
-              updateColumnSelect();
-              showStatus(`✅ Столбцы: ${headers.join(', ')}`, false);
-            }
-          } catch (e) {
-            headers = [];
-            updateColumnSelect();
-            showStatus(`⚠️ Не удалось загрузить заголовки`, true);
-          }
-        } else {
-          updateColumnSelect();
-        }
-      });
-
-      doSearchBtn.addEventListener('click', () => {
-        highlightSearch(colSelect.value, searchInput.value);
-      });
-
-      clearSearchBtn.addEventListener('click', () => {
-        searchInput.value = '';
-        colSelect.value = '';
-        highlightSearch('', '');
-        showStatus('✅ Поиск сброшен', false);
-      });
-
-      searchInput.addEventListener('keypress', e => {
-        if (e.key === 'Enter') doSearchBtn.click();
-      });
-
-      // ЗАПУСК ЗАГРУЗКИ — только здесь, после всех объявлений
       loadData();
     });
   </script>
