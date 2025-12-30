@@ -15,7 +15,7 @@
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
-
+    
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       background: var(--bg);
@@ -23,6 +23,7 @@
       padding: 16px;
       line-height: 1.6;
       overflow-x: hidden;
+      overflow-y: scroll; /* 👈 КЛЮЧЕВАЯ ПРАВКА: избегаем скачков скролла */
       position: relative;
       min-height: 100vh;
     }
@@ -417,23 +418,30 @@
 
     // ====== INIT & EVENTS ======
     btnFind.addEventListener('click', async () => {
-      if (!isDataLoaded) {
-        showStatus('⏳ Загружаем заголовки для поиска…', false);
+      // Всегда открываем панель
+      searchPanel.style.display = searchPanel.style.display === 'none' ? 'block' : 'none';
+    
+      // Если заголовки ещё не известны — подгрузим их из priority.txt
+      if (headers.length === 0) {
+        showStatus('⏳ Загружаем структуру таблицы для поиска…', false);
         try {
           const priorityTxt = await fetchText('priority.txt');
           const priorityLines = priorityTxt.split('\n').map(l => l.trim()).filter(l => l);
           if (priorityLines.length >= 1) {
             headers = priorityLines[0].split('|').map(s => s.trim());
+            updateColumnSelect();
+            showStatus('✅ Структура загружена. Выберите столбец для поиска.', false);
+          } else {
+            throw new Error('Пустой priority.txt');
           }
-          updateColumnSelect();
-          showStatus('✅ Заголовки получены. Выберите столбец.', false);
         } catch (err) {
-          showStatus(`⚠️ Не удалось загрузить заголовки: ${err.message}`, true);
           headers = [];
           updateColumnSelect();
+          showStatus(`⚠️ Не удалось загрузить заголовки: ${err.message}`, true);
         }
+      } else {
+        updateColumnSelect(); // на всякий случай актуализируем
       }
-      searchPanel.style.display = searchPanel.style.display === 'none' ? 'block' : 'none';
     });
 
     doSearchBtn.addEventListener('click', () => {
