@@ -302,12 +302,22 @@
     }
 
     function updateColumnSelect() {
-      colSelect.innerHTML = '';
-      if (headers.length === 0) {
-        colSelect.innerHTML = '<option value="">— загрузка…</option>';
-        return;
-      }
-      colSelect.innerHTML = '<option value="">— выберите столбец —</option>';
+  // Принудительно пересоздаём options
+  requestAnimationFrame(() => {
+    colSelect.innerHTML = '';
+    if (headers.length === 0) {
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = '— загрузка…';
+      opt.disabled = true;
+      opt.selected = true;
+      colSelect.appendChild(opt);
+    } else {
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.textContent = '— выберите столбец —';
+      colSelect.appendChild(placeholder);
+      
       headers.forEach((h, i) => {
         const opt = document.createElement('option');
         opt.value = i;
@@ -315,134 +325,44 @@
         colSelect.appendChild(opt);
       });
     }
+  });
+}
 
-    async function loadData() {
-      try {
-        showStatus('Загрузка данных...', false);
-        const [dataTxt, priorityTxt] = await Promise.all([
-          fetchText('data.txt'),
-          fetchText('priority.txt')
-        ]);
+btnFind.addEventListener('click', async () => {
+  // Сразу показываем панель
+  searchPanel.style.display = searchPanel.style.display === 'none' ? 'block' : 'none';
 
-        const rawData = parseData(dataTxt);
-        const priorityLines = priorityTxt.split('\n').map(l => l.trim()).filter(l => l);
-
-        if (priorityLines.length < 1) throw new Error('priority.txt пуст или некорректен');
-
-        headers = priorityLines[0].split('|').map(s => s.trim());
-
-        // Определяем приоритетный столбец
-        priorityColumn = null;
-        for (let i = 1; i < priorityLines.length; i++) {
-          const line = priorityLines[i];
-          const match = line.match(/priority\s+for\s+["'](.+?)["']/i);
-          if (match) {
-            const colName = match[1];
-            priorityColumn = headers.indexOf(colName);
-            if (priorityColumn === -1) {
-              throw new Error(`Столбец "${colName}" указан в priority for, но отсутствует в заголовке`);
-            }
-            break;
-          }
-        }
-
-        if (priorityColumn === null) {
-          priorityColumn = headers.length - 1;
-          console.warn('Приоритет не указан — сортировка по последнему столбцу');
-        }
-
-        const isNum = detectNumericColumn(priorityColumn, rawData);
-        const sortedData = sortRows(rawData, priorityColumn, isNum);
-
-        dataRows = sortedData;
-        isDataLoaded = true;
-
-        renderTable();
-        updateColumnSelect();
-
-        showStatus(`✅ Загружено ${dataRows.length} строк. Сортировка: "${headers[priorityColumn]}" (${isNum ? 'числовая' : 'текстовая'})`, false);
-
-      } catch (err) {
-        showStatus(`❌ Ошибка: ${err.message}`, true);
-        console.error(err);
-        updateColumnSelect(); // показать хотя бы заглушку
-      }
-    }
-
-    function renderTable() {
-      // Заголовки
-      const headerRow = document.createElement('tr');
-      headers.forEach((h, i) => {
-        const th = document.createElement('th');
-        th.textContent = h;
-        if (i === priorityColumn) {
-          th.style.background = '#ff6f00';
-          th.title = 'Приоритетный столбец для сортировки';
-        }
-        headerRow.appendChild(th);
-      });
-      thead.innerHTML = '';
-      thead.appendChild(headerRow);
-
-      // Строки
-      tbody.innerHTML = '';
-      dataRows.forEach(row => {
-        const tr = document.createElement('tr');
-        headers.forEach((_, i) => {
-          const td = document.createElement('td');
-          td.textContent = row[i] || '—';
-          tr.appendChild(td);
-        });
-        tbody.appendChild(tr);
-      });
-    }
-
-    function highlightSearch(colIndex, query) {
-      const rows = tbody.querySelectorAll('tr');
-      rows.forEach(tr => tr.classList.remove('highlight'));
-
-      if (colIndex === '' || !query.trim()) return;
-
-      const q = query.trim().toLowerCase();
-      let found = 0;
-      rows.forEach(tr => {
-        const cell = tr.cells[colIndex];
-        if (cell && cell.textContent.toLowerCase().includes(q)) {
-          tr.classList.add('highlight');
-          found++;
-        }
-      });
-
-      showStatus(`🔍 Найдено совпадений: ${found}`, false);
-    }
-
-    // ====== INIT & EVENTS ======
-    btnFind.addEventListener('click', async () => {
-      // Всегда открываем панель
-      searchPanel.style.display = searchPanel.style.display === 'none' ? 'block' : 'none';
+  // Если заголовки ещё не известны — грузим их
+  if (headers.length === 0) {
+    // Показываем "загрузка" в селекте
+    colSelect.innerHTML = '<option value="" disabled selected>— загрузка структуры…</option>';
     
-      // Если заголовки ещё не известны — подгрузим их из priority.txt
-      if (headers.length === 0) {
-        showStatus('⏳ Загружаем структуру таблицы для поиска…', false);
-        try {
-          const priorityTxt = await fetchText('priority.txt');
-          const priorityLines = priorityTxt.split('\n').map(l => l.trim()).filter(l => l);
-          if (priorityLines.length >= 1) {
-            headers = priorityLines[0].split('|').map(s => s.trim());
-            updateColumnSelect();
-            showStatus('✅ Структура загружена. Выберите столбец для поиска.', false);
-          } else {
-            throw new Error('Пустой priority.txt');
-          }
-        } catch (err) {
-          headers = [];
-          updateColumnSelect();
-          showStatus(`⚠️ Не удалось загрузить заголовки: ${err.message}`, true);
-        }
-      } else {
-        updateColumnSelect(); // на всякий случай актуализируем
-      }
-    });
+    try {
+      const priorityTxt = await fetchText('priority.txt');
+      const lines = priorityTxt.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'));
+      
+      if (lines.length === 0) throw new Error('Файл priority.txt пуст');
+      
+      // Берём ТОЛЬКО первую строку — заголовки
+      headers = lines[0].split('|').map(s => s.trim()).filter(s => s);
+      
+      if (headers.length === 0) throw new Error('Не удалось извлечь заголовки');
+      
+      // Обновляем селект — уже с данными
+      updateColumnSelect();
+      showStatus(`✅ Загружено ${headers.length} столбцов: ${headers.join(', ')}`, false);
+      
+    } catch (err) {
+      console.error('Ошибка загрузки priority.txt:', err);
+      headers = [];
+      updateColumnSelect();
+      showStatus(`❌ Не удалось загрузить столбцы: ${err.message}`, true);
+    }
+  } else {
+    // Уже есть — просто обновить
+    updateColumnSelect();
+  }
+});
 
     doSearchBtn.addEventListener('click', () => {
       const col = colSelect.value;
