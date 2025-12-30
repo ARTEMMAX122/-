@@ -15,7 +15,7 @@
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    
+
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       background: var(--bg);
@@ -23,30 +23,43 @@
       padding: 16px;
       line-height: 1.6;
       overflow-x: hidden;
-      overflow-y: scroll; /* 👈 КЛЮЧЕВАЯ ПРАВКА: избегаем скачков скролла */
+      overflow-y: scroll; /* ← фикс дёрганья скролла */
       position: relative;
       min-height: 100vh;
     }
 
     /* Снежинки */
+    #snow-container {
+      pointer-events: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+    }
     .snowflake {
       position: absolute;
       top: -20px;
       color: white;
       font-size: 1.2rem;
       user-select: none;
-      z-index: 1;
-      opacity: 0.8;
-      animation: fall linear infinite;
+      opacity: 0.7;
+      animation: fall linear forwards;
     }
-
     @keyframes fall {
       to {
         transform: translateY(100vh) rotate(360deg);
       }
     }
 
-    /* Остальной стиль */
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      position: relative;
+      z-index: 10;
+    }
+
     header {
       display: flex;
       justify-content: space-between;
@@ -54,8 +67,6 @@
       padding: 12px 0;
       border-bottom: 2px solid var(--gold);
       margin-bottom: 20px;
-      position: relative;
-      z-index: 10;
     }
 
     h1 {
@@ -64,11 +75,7 @@
       text-shadow: 0 0 8px rgba(255,215,0,0.4);
     }
 
-    .top-bar {
-      display: flex;
-      gap: 12px;
-    }
-
+    .top-bar { display: flex; gap: 12px; }
     .btn {
       background: var(--green);
       color: white;
@@ -80,16 +87,8 @@
       transition: 0.2s;
     }
     .btn:hover { background: #226b47; }
-
     .btn-red { background: var(--red); }
     .btn-red:hover { background: #a02525; }
-
-    .container {
-      max-width: 1000px;
-      margin: 0 auto;
-      position: relative;
-      z-index: 10;
-    }
 
     .status {
       padding: 12px;
@@ -108,25 +107,21 @@
       overflow: hidden;
       box-shadow: 0 4px 12px rgba(0,0,0,0.4);
     }
-
     th, td {
       padding: 12px 16px;
       text-align: left;
       border-bottom: 1px solid var(--border);
     }
-
     th {
       background: var(--green);
       color: white;
       position: sticky;
       top: 0;
     }
-
     tr.highlight {
       background: rgba(255, 215, 0, 0.25) !important;
       animation: pulse 1.5s ease-in-out;
     }
-
     @keyframes pulse {
       0% { background-color: rgba(255,215,0,0.1); }
       50% { background-color: rgba(255,215,0,0.5); }
@@ -140,14 +135,12 @@
       border-radius: 8px;
       display: none;
     }
-
     .search-row {
       display: flex;
       gap: 10px;
       align-items: center;
       flex-wrap: wrap;
     }
-
     select, input {
       padding: 8px 12px;
       border-radius: 4px;
@@ -155,7 +148,6 @@
       background: rgba(255,255,255,0.1);
       color: var(--snow);
     }
-
     input::placeholder { color: #aaa; }
 
     footer {
@@ -163,8 +155,6 @@
       text-align: center;
       font-size: 0.9rem;
       color: #aaa;
-      position: relative;
-      z-index: 10;
     }
 
     @media (max-width: 600px) {
@@ -185,7 +175,7 @@
       </div>
     </header>
 
-    <div id="status" class="status"></div>
+    <div id="status" class="status">⏳ Загрузка данных…</div>
 
     <div id="searchPanel" class="search-panel">
       <h3>🔍 Найти запись</h3>
@@ -203,44 +193,18 @@
 
     <div style="overflow-x: auto;">
       <table id="dataTable">
-        <thead><tr><th>Загрузка...</th></tr></thead>
+        <thead><tr><th>Загрузка…</th></tr></thead>
         <tbody></tbody>
       </table>
     </div>
 
     <footer>
-      🎅 Обновите data.txt и priority.txt в репозитории для обновления таблицы
+      🎅 Обновите data.txt и priority.txt для обновления таблицы
     </footer>
   </div>
 
   <script>
-    // ====== СНЕЖИНКИ ======
-    function createSnowflakes() {
-      const container = document.getElementById('snow-container');
-      const flakes = '❅❆❄✻✼❇';
-      const count = Math.min(50, Math.floor(window.innerWidth / 20));
-
-      for (let i = 0; i < count; i++) {
-        const snow = document.createElement('div');
-        snow.className = 'snowflake';
-        snow.textContent = flakes[Math.floor(Math.random() * flakes.length)];
-        snow.style.left = Math.random() * 100 + 'vw';
-        snow.style.opacity = 0.3 + Math.random() * 0.7;
-        snow.style.fontSize = (0.8 + Math.random() * 1.2) + 'rem';
-        snow.style.animationDuration = (5 + Math.random() * 10) + 's';
-        snow.style.animationDelay = Math.random() * 5 + 's';
-        container.appendChild(snow);
-      }
-    }
-
-    // Запуск снежинок при загрузке
-    document.addEventListener('DOMContentLoaded', createSnowflakes);
-    window.addEventListener('resize', () => {
-      document.getElementById('snow-container').innerHTML = '';
-      createSnowflakes();
-    });
-
-    // ====== ОСНОВНОЙ КОД ======
+    // ====== ГЛОБАЛЫ ======
     const statusEl = document.getElementById('status');
     const table = document.getElementById('dataTable');
     const thead = table.querySelector('thead');
@@ -253,23 +217,37 @@
     const clearSearchBtn = document.getElementById('clearSearch');
 
     let headers = [];
-    let dataRows = [];
+    let dataRows = []; // каждый элемент: { raw: [...], computed: [...] }
     let priorityColumn = null;
     let isDataLoaded = false;
 
+    // ====== УТИЛИТЫ ======
     function showStatus(msg, isError = false) {
       statusEl.textContent = msg;
       statusEl.className = 'status ' + (isError ? 'error' : 'success');
     }
 
     async function fetchText(file) {
-      try {
-        const res = await fetch(file + '?_=' + Date.now()); // bust cache
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return await res.text();
-      } catch (err) {
-        throw new Error(`Не удалось загрузить ${file}: ${err.message}`);
+      const res = await fetch(file + '?_=' + Date.now());
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.text();
+    }
+
+    // Вычисляет "12+13" → 25, иначе NaN → оставляем как есть
+    function computeExpr(str) {
+      if (typeof str !== 'string') return str;
+      str = str.trim();
+      // Поддерживаем: 5, 10+2, 3+4+1
+      if (/^\d+(\+\d+)*$/.test(str)) {
+        try {
+          // БЕЗ eval — безопасно:
+          const parts = str.split('+').map(s => parseInt(s, 10));
+          if (parts.every(n => !isNaN(n))) {
+            return parts.reduce((a, b) => a + b, 0);
+          }
+        } catch (e) {}
       }
+      return NaN;
     }
 
     function parseData(text) {
@@ -277,112 +255,227 @@
         .split('\n')
         .map(line => line.trim())
         .filter(line => line && !line.startsWith('#'))
-        .map(line => line.split('|').map(s => s.trim()));
+        .map(line => {
+          const raw = line.split('|').map(s => s.trim());
+          const computed = raw.map(cell => {
+            const num = computeExpr(cell);
+            return isNaN(num) ? cell : num;
+          });
+          return { raw, computed };
+        });
     }
 
     function detectNumericColumn(colIndex, rows) {
       for (let row of rows) {
-        if (row.length <= colIndex) return false;
-        const val = row[colIndex];
-        if (val === '') continue;
-        if (val !== '' && isNaN(Number(val))) return false;
+        if (row.computed.length <= colIndex) return false;
+        const val = row.computed[colIndex];
+        if (typeof val !== 'number') return false;
       }
       return true;
     }
 
     function sortRows(rows, colIndex, isNumeric) {
       return [...rows].sort((a, b) => {
-        const A = a[colIndex] || '';
-        const B = b[colIndex] || '';
+        const A = a.computed[colIndex];
+        const B = b.computed[colIndex];
         if (isNumeric) {
-          return Number(B) - Number(A); // по убыванию
+          return Number(B) - Number(A); // ↓ убывание
         }
-        return B.localeCompare(A, 'ru', { numeric: true });
+        const strA = (typeof A === 'string' ? A : String(A)).toLowerCase();
+        const strB = (typeof B === 'string' ? B : String(B)).toLowerCase();
+        return strB.localeCompare(strA, 'ru', { numeric: true });
       });
     }
 
     function updateColumnSelect() {
-  // Принудительно пересоздаём options
-  requestAnimationFrame(() => {
-    colSelect.innerHTML = '';
-    if (headers.length === 0) {
-      const opt = document.createElement('option');
-      opt.value = '';
-      opt.textContent = '— загрузка…';
-      opt.disabled = true;
-      opt.selected = true;
-      colSelect.appendChild(opt);
-    } else {
-      const placeholder = document.createElement('option');
-      placeholder.value = '';
-      placeholder.textContent = '— выберите столбец —';
-      colSelect.appendChild(placeholder);
-      
-      headers.forEach((h, i) => {
-        const opt = document.createElement('option');
-        opt.value = i;
-        opt.textContent = h;
-        colSelect.appendChild(opt);
+      requestAnimationFrame(() => {
+        colSelect.innerHTML = '';
+        if (headers.length === 0) {
+          colSelect.innerHTML = '<option value="" disabled selected>— загрузка…</option>';
+        } else {
+          colSelect.innerHTML = '<option value="">— выберите столбец —</option>';
+          headers.forEach((h, i) => {
+            const opt = document.createElement('option');
+            opt.value = i;
+            opt.textContent = h;
+            colSelect.appendChild(opt);
+          });
+        }
       });
     }
-  });
-}
 
-btnFind.addEventListener('click', async () => {
-  // Сразу показываем панель
-  searchPanel.style.display = searchPanel.style.display === 'none' ? 'block' : 'none';
+    // ====== ОСНОВНАЯ ЗАГРУЗКА ======
+    async function loadData() {
+      try {
+        showStatus('📥 Загрузка данных…', false);
+        const [dataTxt, priorityTxt] = await Promise.all([
+          fetchText('data.txt'),
+          fetchText('priority.txt')
+        ]);
 
-  // Если заголовки ещё не известны — грузим их
-  if (headers.length === 0) {
-    // Показываем "загрузка" в селекте
-    colSelect.innerHTML = '<option value="" disabled selected>— загрузка структуры…</option>';
-    
-    try {
-      const priorityTxt = await fetchText('priority.txt');
-      const lines = priorityTxt.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'));
-      
-      if (lines.length === 0) throw new Error('Файл priority.txt пуст');
-      
-      // Берём ТОЛЬКО первую строку — заголовки
-      headers = lines[0].split('|').map(s => s.trim()).filter(s => s);
-      
-      if (headers.length === 0) throw new Error('Не удалось извлечь заголовки');
-      
-      // Обновляем селект — уже с данными
-      updateColumnSelect();
-      showStatus(`✅ Загружено ${headers.length} столбцов: ${headers.join(', ')}`, false);
-      
-    } catch (err) {
-      console.error('Ошибка загрузки priority.txt:', err);
-      headers = [];
-      updateColumnSelect();
-      showStatus(`❌ Не удалось загрузить столбцы: ${err.message}`, true);
+        const parsedData = parseData(dataTxt);
+        const priorityLines = priorityTxt.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'));
+
+        if (priorityLines.length < 1) throw new Error('priority.txt пуст');
+
+        headers = priorityLines[0].split('|').map(s => s.trim()).filter(Boolean);
+
+        // Определяем приоритетный столбец
+        priorityColumn = null;
+        for (let line of priorityLines.slice(1)) {
+          const match = line.match(/priority\s+for\s+["'](.+?)["']/i);
+          if (match) {
+            const name = match[1].trim();
+            priorityColumn = headers.indexOf(name);
+            if (priorityColumn === -1) {
+              throw new Error(`Столбец "${name}" не найден среди: ${headers.join(', ')}`);
+            }
+            break;
+          }
+        }
+
+        if (priorityColumn === null) {
+          priorityColumn = headers.length - 1;
+          console.warn('⚠️ priority for не указан — сортировка по последнему столбцу');
+        }
+
+        const isNumeric = detectNumericColumn(priorityColumn, parsedData);
+        const sortedData = sortRows(parsedData, priorityColumn, isNumeric);
+
+        dataRows = sortedData;
+        isDataLoaded = true;
+
+        // Рендер
+        renderTable();
+        updateColumnSelect();
+        showStatus(`✅ Загружено ${dataRows.length} строк. Сортировка: "${headers[priorityColumn]}" (${isNumeric ? 'числовая' : 'текстовая'})`, false);
+
+      } catch (err) {
+        console.error(err);
+        showStatus(`❌ Ошибка: ${err.message}`, true);
+        updateColumnSelect();
+      }
     }
-  } else {
-    // Уже есть — просто обновить
-    updateColumnSelect();
-  }
-});
 
-    doSearchBtn.addEventListener('click', () => {
-      const col = colSelect.value;
-      const q = searchInput.value;
-      highlightSearch(col, q);
-    });
+    function renderTable() {
+      // Заголовки
+      thead.innerHTML = '';
+      const headerRow = document.createElement('tr');
+      headers.forEach((h, i) => {
+        const th = document.createElement('th');
+        th.textContent = h;
+        if (i === priorityColumn) {
+          th.style.background = '#ff6f00';
+          th.title = 'Приоритетный столбец';
+        }
+        headerRow.appendChild(th);
+      });
+      thead.appendChild(headerRow);
 
-    clearSearchBtn.addEventListener('click', () => {
-      searchInput.value = '';
-      colSelect.value = '';
-      highlightSearch('', '');
-      showStatus('✅ Поиск сброшен', false);
-    });
+      // Строки
+      tbody.innerHTML = '';
+      dataRows.forEach(row => {
+        const tr = document.createElement('tr');
+        row.raw.forEach((cell, i) => {
+          const td = document.createElement('td');
+          td.textContent = cell;
+          // Для числовых — можно добавить title
+          if (typeof row.computed[i] === 'number' && row.computed[i] !== cell) {
+            td.title = `Вычислено: ${row.computed[i]}`;
+          }
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+    }
 
-    searchInput.addEventListener('keypress', e => {
-      if (e.key === 'Enter') doSearchBtn.click();
-    });
+    function highlightSearch(colIndex, query) {
+      const rows = tbody.querySelectorAll('tr');
+      rows.forEach(tr => tr.classList.remove('highlight'));
 
-    // Запуск
-    window.addEventListener('DOMContentLoaded', () => {
+      if (colIndex === '' || !query.trim()) return;
+
+      const q = query.trim().toLowerCase();
+      let found = 0;
+      rows.forEach((tr, idx) => {
+        const cell = tr.cells[colIndex];
+        const rawVal = dataRows[idx]?.raw[colIndex] || '';
+        const compVal = dataRows[idx]?.computed[colIndex];
+        const strToSearch = (rawVal + ' ' + (typeof compVal === 'number' ? compVal : '')).toLowerCase();
+        if (cell && strToSearch.includes(q)) {
+          tr.classList.add('highlight');
+          found++;
+        }
+      });
+
+      showStatus(`🔍 Найдено: ${found} совпадений`, false);
+    }
+
+    // ====== СОЗДАНИЕ СНЕЖИНОК ======
+    function createSnowflakes() {
+      const container = document.getElementById('snow-container');
+      container.innerHTML = '';
+      const flakes = '❅❆❄✻✼❇';
+      const count = Math.min(60, Math.floor(window.innerWidth / 15));
+
+      for (let i = 0; i < count; i++) {
+        const snow = document.createElement('div');
+        snow.className = 'snowflake';
+        snow.textContent = flakes[Math.floor(Math.random() * flakes.length)];
+        snow.style.left = Math.random() * 100 + 'vw';
+        snow.style.opacity = 0.3 + Math.random() * 0.6;
+        snow.style.fontSize = (0.7 + Math.random() * 1) + 'rem';
+        snow.style.animationDuration = (6 + Math.random() * 12) + 's';
+        snow.style.animationDelay = Math.random() * 5 + 's';
+        snow.style.animationName = 'fall';
+        container.appendChild(snow);
+      }
+    }
+
+    // ====== ИНИЦИАЛИЗАЦИЯ ======
+    document.addEventListener('DOMContentLoaded', () => {
+      createSnowflakes();
+      window.addEventListener('resize', createSnowflakes);
+
+      // Кнопка "Найти себя"
+      btnFind.addEventListener('click', async () => {
+        searchPanel.style.display = searchPanel.style.display === 'none' ? 'block' : 'none';
+        if (headers.length === 0 && !isDataLoaded) {
+          colSelect.innerHTML = '<option value="" disabled selected>— загрузка структуры…</option>';
+          try {
+            const pt = await fetchText('priority.txt');
+            const lines = pt.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'));
+            if (lines.length >= 1) {
+              headers = lines[0].split('|').map(s => s.trim()).filter(Boolean);
+              updateColumnSelect();
+              showStatus(`✅ Столбцы: ${headers.join(', ')}`, false);
+            }
+          } catch (e) {
+            headers = [];
+            updateColumnSelect();
+            showStatus(`⚠️ Не удалось загрузить заголовки`, true);
+          }
+        } else {
+          updateColumnSelect();
+        }
+      });
+
+      doSearchBtn.addEventListener('click', () => {
+        highlightSearch(colSelect.value, searchInput.value);
+      });
+
+      clearSearchBtn.addEventListener('click', () => {
+        searchInput.value = '';
+        colSelect.value = '';
+        highlightSearch('', '');
+        showStatus('✅ Поиск сброшен', false);
+      });
+
+      searchInput.addEventListener('keypress', e => {
+        if (e.key === 'Enter') doSearchBtn.click();
+      });
+
+      // ЗАПУСК ЗАГРУЗКИ — только здесь, после всех объявлений
       loadData();
     });
   </script>
