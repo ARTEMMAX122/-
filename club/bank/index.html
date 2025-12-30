@@ -18,12 +18,34 @@
 
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: var(--bg) url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%230a2e47"/><circle cx="20" cy="25" r="1.5" fill="%23f8fbff" opacity="0.6"/><circle cx="60" cy="15" r="1" fill="%23f8fbff" opacity="0.4"/><circle cx="85" cy="60" r="1.2" fill="%23f8fbff" opacity="0.5"/></svg>');
+      background: var(--bg);
       color: var(--snow);
       padding: 16px;
       line-height: 1.6;
+      overflow-x: hidden;
+      position: relative;
+      min-height: 100vh;
     }
 
+    /* Снежинки */
+    .snowflake {
+      position: absolute;
+      top: -20px;
+      color: white;
+      font-size: 1.2rem;
+      user-select: none;
+      z-index: 1;
+      opacity: 0.8;
+      animation: fall linear infinite;
+    }
+
+    @keyframes fall {
+      to {
+        transform: translateY(100vh) rotate(360deg);
+      }
+    }
+
+    /* Остальной стиль */
     header {
       display: flex;
       justify-content: space-between;
@@ -31,6 +53,8 @@
       padding: 12px 0;
       border-bottom: 2px solid var(--gold);
       margin-bottom: 20px;
+      position: relative;
+      z-index: 10;
     }
 
     h1 {
@@ -62,6 +86,8 @@
     .container {
       max-width: 1000px;
       margin: 0 auto;
+      position: relative;
+      z-index: 10;
     }
 
     .status {
@@ -96,13 +122,13 @@
     }
 
     tr.highlight {
-      background: rgba(255, 215, 0, 0.2);
+      background: rgba(255, 215, 0, 0.25) !important;
       animation: pulse 1.5s ease-in-out;
     }
 
     @keyframes pulse {
       0% { background-color: rgba(255,215,0,0.1); }
-      50% { background-color: rgba(255,215,0,0.4); }
+      50% { background-color: rgba(255,215,0,0.5); }
       100% { background-color: rgba(255,215,0,0.1); }
     }
 
@@ -111,6 +137,7 @@
       padding: 16px;
       background: rgba(0,0,0,0.3);
       border-radius: 8px;
+      display: none;
     }
 
     .search-row {
@@ -135,6 +162,8 @@
       text-align: center;
       font-size: 0.9rem;
       color: #aaa;
+      position: relative;
+      z-index: 10;
     }
 
     @media (max-width: 600px) {
@@ -144,6 +173,8 @@
   </style>
 </head>
 <body>
+  <div id="snow-container"></div>
+
   <div class="container">
     <header>
       <h1>🎄 Новогодняя Валюта</h1>
@@ -155,12 +186,12 @@
 
     <div id="status" class="status"></div>
 
-    <div id="searchPanel" class="search-panel" style="display: none;">
+    <div id="searchPanel" class="search-panel">
       <h3>🔍 Найти запись</h3>
       <div class="search-row">
         <label>Столбец:</label>
         <select id="colSelect">
-          <option value="">— выберите —</option>
+          <option value="">— загрузка заголовков…</option>
         </select>
         <label>Текст:</label>
         <input type="text" id="searchInput" placeholder="Введите имя, число и т.д." />
@@ -182,6 +213,33 @@
   </div>
 
   <script>
+    // ====== СНЕЖИНКИ ======
+    function createSnowflakes() {
+      const container = document.getElementById('snow-container');
+      const flakes = '❅❆❄✻✼❇';
+      const count = Math.min(50, Math.floor(window.innerWidth / 20));
+
+      for (let i = 0; i < count; i++) {
+        const snow = document.createElement('div');
+        snow.className = 'snowflake';
+        snow.textContent = flakes[Math.floor(Math.random() * flakes.length)];
+        snow.style.left = Math.random() * 100 + 'vw';
+        snow.style.opacity = 0.3 + Math.random() * 0.7;
+        snow.style.fontSize = (0.8 + Math.random() * 1.2) + 'rem';
+        snow.style.animationDuration = (5 + Math.random() * 10) + 's';
+        snow.style.animationDelay = Math.random() * 5 + 's';
+        container.appendChild(snow);
+      }
+    }
+
+    // Запуск снежинок при загрузке
+    document.addEventListener('DOMContentLoaded', createSnowflakes);
+    window.addEventListener('resize', () => {
+      document.getElementById('snow-container').innerHTML = '';
+      createSnowflakes();
+    });
+
+    // ====== ОСНОВНОЙ КОД ======
     const statusEl = document.getElementById('status');
     const table = document.getElementById('dataTable');
     const thead = table.querySelector('thead');
@@ -196,6 +254,7 @@
     let headers = [];
     let dataRows = [];
     let priorityColumn = null;
+    let isDataLoaded = false;
 
     function showStatus(msg, isError = false) {
       statusEl.textContent = msg;
@@ -204,7 +263,7 @@
 
     async function fetchText(file) {
       try {
-        const res = await fetch(file);
+        const res = await fetch(file + '?_=' + Date.now()); // bust cache
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return await res.text();
       } catch (err) {
@@ -225,7 +284,7 @@
         if (row.length <= colIndex) return false;
         const val = row[colIndex];
         if (val === '') continue;
-        if (isNaN(Number(val))) return false;
+        if (val !== '' && isNaN(Number(val))) return false;
       }
       return true;
     }
@@ -241,6 +300,21 @@
       });
     }
 
+    function updateColumnSelect() {
+      colSelect.innerHTML = '';
+      if (headers.length === 0) {
+        colSelect.innerHTML = '<option value="">— загрузка…</option>';
+        return;
+      }
+      colSelect.innerHTML = '<option value="">— выберите столбец —</option>';
+      headers.forEach((h, i) => {
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.textContent = h;
+        colSelect.appendChild(opt);
+      });
+    }
+
     async function loadData() {
       try {
         showStatus('Загрузка данных...', false);
@@ -253,7 +327,7 @@
         const priorityLines = priorityTxt.split('\n').map(l => l.trim()).filter(l => l);
 
         if (priorityLines.length < 1) throw new Error('priority.txt пуст или некорректен');
-        
+
         headers = priorityLines[0].split('|').map(s => s.trim());
 
         // Определяем приоритетный столбец
@@ -272,21 +346,25 @@
         }
 
         if (priorityColumn === null) {
-          showStatus('⚠️ Приоритет сортировки не указан — сортировка по умолчанию (последний столбец)', false);
           priorityColumn = headers.length - 1;
+          console.warn('Приоритет не указан — сортировка по последнему столбцу');
         }
 
-        // Сортируем
         const isNum = detectNumericColumn(priorityColumn, rawData);
         const sortedData = sortRows(rawData, priorityColumn, isNum);
 
         dataRows = sortedData;
+        isDataLoaded = true;
+
         renderTable();
+        updateColumnSelect();
+
         showStatus(`✅ Загружено ${dataRows.length} строк. Сортировка: "${headers[priorityColumn]}" (${isNum ? 'числовая' : 'текстовая'})`, false);
 
       } catch (err) {
         showStatus(`❌ Ошибка: ${err.message}`, true);
         console.error(err);
+        updateColumnSelect(); // показать хотя бы заглушку
       }
     }
 
@@ -316,15 +394,6 @@
         });
         tbody.appendChild(tr);
       });
-
-      // Обновляем выпадашку поиска
-      colSelect.innerHTML = '<option value="">— выберите —</option>';
-      headers.forEach((h, i) => {
-        const opt = document.createElement('option');
-        opt.value = i;
-        opt.textContent = h;
-        colSelect.appendChild(opt);
-      });
     }
 
     function highlightSearch(colIndex, query) {
@@ -346,8 +415,24 @@
       showStatus(`🔍 Найдено совпадений: ${found}`, false);
     }
 
-    // Events
-    btnFind.addEventListener('click', () => {
+    // ====== INIT & EVENTS ======
+    btnFind.addEventListener('click', async () => {
+      if (!isDataLoaded) {
+        showStatus('⏳ Загружаем заголовки для поиска…', false);
+        try {
+          const priorityTxt = await fetchText('priority.txt');
+          const priorityLines = priorityTxt.split('\n').map(l => l.trim()).filter(l => l);
+          if (priorityLines.length >= 1) {
+            headers = priorityLines[0].split('|').map(s => s.trim());
+          }
+          updateColumnSelect();
+          showStatus('✅ Заголовки получены. Выберите столбец.', false);
+        } catch (err) {
+          showStatus(`⚠️ Не удалось загрузить заголовки: ${err.message}`, true);
+          headers = [];
+          updateColumnSelect();
+        }
+      }
       searchPanel.style.display = searchPanel.style.display === 'none' ? 'block' : 'none';
     });
 
@@ -371,7 +456,6 @@
     // Запуск
     window.addEventListener('DOMContentLoaded', () => {
       loadData();
-      // Автообновление при F5 / GitHub Pages CDN задержке — можно добавить интервал, но не обязательно
     });
   </script>
 </body>
